@@ -2,45 +2,44 @@ from dynamic_scraper import DynamicScraper
 
 def main():
     scraper = DynamicScraper()
+
+    scraper.iniciar_navegador()
     
-    while True: # Bucle infinito para mantener la consola abierta
-        print("\n" + "="*40)
-        print("   | DYNASCRAPPY | DYNAMIC SCRAPER")
-        print("="*40)
-        
-        target_url = input("Introduce la URL (o 'salir' para terminar): ").strip()
-        
-        if target_url.lower() in ['salir', 'exit', '0']:
-            print("Saliendo del programa...")
-            break
-
-        print("\n¿Qué deseas descargar?")
-        print("1. Archivos (PDF, CSV, ZIP, etc.)")
-        print("2. Imágenes")
-        print("3. Solo Texto")
-        print("4. Volver / Cancelar")
-        
-        opc = input("\nSelecciona una opción: ")
-        
-        if opc == '1':
-            exts = input("Extensiones (ej: pdf,csv) o ENTER para default: ")
-            ext_list = [e.strip() for e in exts.split(',')] if exts else None
-            scraper.run(target_url, mode='files', extensions=ext_list)
-        
-        elif opc == '2':
-            scraper.run(target_url, mode='images')
-        
-        elif opc == '3':
-            scraper.run(target_url, mode='text')
-        
-        elif opc == '4':
-            continue # Vuelve al inicio del bucle
+    try:
+        while True:
+            print("\n" + "="*40)
+            print("   | DYNASCRAPPY | DYNAMIC SCRAPER")
+            print("="*40)
             
-        else:
-            print("[!] Opción no válida")
+            target_url = input("URL (o 'salir'): ").strip()
+            
+            if target_url.lower() in ['salir', 'exit', '0']:
+                break
 
-        print("\n[✔] Proceso terminado.")
-        # Aquí el bucle vuelve a empezar, pidiendo una nueva URL
+            print("\n1. Archivos | 2. Imágenes | 3. Texto | 4. Cancelar")
+            opc = input("Opción: ")
+            
+            if opc == '1':
+                exts = input("Extensiones (ej: pdf,csv): ")
+                ext_list = [e.strip() for e in exts.split(',')] if exts else None
+                scraper.run(target_url, mode='files', extensions=ext_list)
+            elif opc == '2':
+                scraper.run(target_url, mode='images')
+            elif opc == '3':
+                scraper.run(target_url, mode='text')
+            elif opc == '4':
+                continue
+            
+            print("\n[✔] Tarea completada. El navegador sigue abierto.")
+
+    except KeyboardInterrupt:
+        print("\n[!] Interrupción detectada (Ctrl+C).")
+    
+    finally:
+        # Esto se ejecuta tanto si escribes 'salir' como si presionas Ctrl+C
+        scraper.cerrar_todo()
+        print("Programa finalizado correctamente.")
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()

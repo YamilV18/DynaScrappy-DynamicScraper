@@ -13,19 +13,22 @@ class DynamicScraper:
         self.port = port
         self.extractor = ResourceExtractor()
         self.current_session_path = ""
-        self.browser_process = None  # Para rastrear el proceso de Edge
+        self.browser_process = None
+        self.playwright = None
+        self.browser_context = None
 
-    def _launch_browser(self):
-        """Lanza Edge o Chrome con depuración remota (técnica SENAMHI)."""
-        edge_path = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
-        self.browser_process = subprocess.Popen([
-            edge_path,
-            f'--remote-debugging-port={self.port}',
-            '--user-data-dir=C:\\temp\\scraper_profile',
-            '--no-first-run',
-            '--no-default-browser-check'
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(3)
+    def iniciar_navegador(self):
+        """Lanza el navegador una sola vez al inicio."""
+        if self.browser_process is None:
+            print("[*] Iniciando instancia persistente del navegador...")
+            edge_path = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+            self.browser_process = subprocess.Popen([
+                edge_path,
+                f'--remote-debugging-port={self.port}',
+                '--user-data-dir=C:\\temp\\scraper_profile',
+                '--no-first-run'
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            time.sleep(3)
 
     def _force_close_browser(self):
         """Mata el proceso del navegador y sus hijos."""
@@ -39,11 +42,9 @@ class DynamicScraper:
             self.browser_process = None
 
     def run(self, url, mode='files', extensions=None):
-        self._launch_browser()
-        
         with sync_playwright() as p:
-            browser = None
             try:
+                # Conexión al navegador que ya está abierto
                 browser = p.chromium.connect_over_cdp(f"http://127.0.0.1:{self.port}")
                 context = browser.contexts[0]
                 page = context.new_page()
@@ -83,16 +84,13 @@ class DynamicScraper:
                     text = self.extractor.find_text_blocks(content)
                     self._save_text(text, url)
 
-                browser.close()
+                if resources:
+                    self._download_manager(resources, url)
 
-                input("\n>>> Tarea finalizada. Presiona ENTER para cerrar el navegador y volver al menú...")
+                page.close() # Solo cerramos la pestaña, no el navegador
+                
             except Exception as e:
-                print(f"[!] Error: {e}")
-            finally:
-                if browser:
-                    print("[*] Cerrando navegador...")
-                    browser.close()
-                self._force_close_browser()
+                print(f"[!] Error durante la extracción: {e}")
 
     def _download_manager(self, links, base_url):
         """Gestiona las descargas usando hilos para eficiencia."""
@@ -158,3 +156,13 @@ class DynamicScraper:
             f.write(f"FUENTE: {url}\n{'='*50}\n\n")
             f.write(text)
         print(f"[OK] Texto guardado en: {filename}")
+    def cerrar_todo(self):
+        """Cierre final del proceso del navegador."""
+        if self.browser_process:
+            print("\n[*] Cerrando navegador y limpiando procesos...")
+            try:
+                subprocess.call(['taskkill', '/F', '/T', '/PID', str(self.browser_process.pid)], 
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except:
+                pass
+            self.browser_process = None
