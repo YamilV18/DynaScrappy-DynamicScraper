@@ -1,4 +1,5 @@
 from dynamic_scraper import DynamicScraper
+import sys
 
 def main():
     scraper = DynamicScraper()
