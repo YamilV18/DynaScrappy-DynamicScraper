@@ -5,7 +5,7 @@ def main():
     
     while True: # Bucle infinito para mantener la consola abierta
         print("\n" + "="*40)
-        print("   UNIVERSAL DYNAMIC SCRAPER")
+        print("   | DYNASCRAPPY | DYNAMIC SCRAPER")
         print("="*40)
         
         target_url = input("Introduce la URL (o 'salir' para terminar): ").strip()

@@ -107,20 +107,49 @@ class DynamicScraper:
             t.join()
 
     def _download_item(self, url):
-        """Descarga usando la ruta de la sesión actual."""
-        try:
-            # Nombre del archivo basado en la URL
-            raw_filename = url.split('/')[-1].split('?')[0] or "index.html"
-            filename = os.path.join(self.current_session_path, raw_filename)
-            
-            response = requests.get(url, stream=True, timeout=10)
-            if response.status_code == 200:
-                with open(filename, 'wb') as f:
-                    for chunk in response.iter_content(1024):
-                        f.write(chunk)
+        """Descarga robusta con reintentos para conexiones móviles."""
+        intentos_max = 3
+        timeout_segundos = 30 # Aumentado para conexiones lentas
+        
+        # Nombre del archivo
+        raw_filename = url.split('/')[-1].split('?')[0] or "archivo_desconocido"
+        filename = os.path.join(self.current_session_path, raw_filename)
+
+        for intento in range(intentos_max):
+            try:
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
+                
+                with requests.get(url, stream=True, timeout=timeout_segundos, headers=headers) as response:
+                    response.raise_for_status()
+                    
+                    # Verificar si el servidor indica el tamaño del archivo
+                    total_size = int(response.headers.get('content-length', 0))
+                    
+                    with open(filename, 'wb') as f:
+                        downloaded_size = 0
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                                downloaded_size += len(chunk)
+                    
+                    # VALIDACIÓN: ¿Se descargó completo?
+                    if total_size != 0 and downloaded_size < total_size:
+                        raise Exception(f"Descarga incompleta: {downloaded_size}/{total_size} bytes")
+                
                 print(f"  [OK] -> {os.path.basename(filename)}")
-        except Exception as e:
-            print(f"  [!] Error descargando {url}: {e}")
+                break
+
+            except Exception as e:
+                print(f"  [!] Intento {intento + 1} fallido para {url}: {e}")
+                if os.path.exists(filename):
+                    os.remove(filename) # Borrar archivo corrupto para reintentar
+                
+                if intento < intentos_max - 1:
+                    time.sleep(2) # Esperar un poco antes de reintentar
+                else:
+                    print(f"  [ERROR FINAL] No se pudo descargar: {url}")
 
     def _save_text(self, text, url):
         """Guarda el texto en la carpeta 'text' del sitio."""
