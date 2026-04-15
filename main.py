@@ -17,7 +17,7 @@ def main():
             if target_url.lower() in ['salir', 'exit', '0']:
                 break
 
-            print("\n1. Archivos | 2. Imágenes | 3. Texto | 4. Cancelar")
+            print("\n1. Archivos | 2. Imágenes | 3. Texto | 4. Videos | 5. Cancelar")
             opc = input("Opción: ")
             
             if opc == '1':
@@ -29,6 +29,8 @@ def main():
             elif opc == '3':
                 scraper.run(target_url, mode='text')
             elif opc == '4':
+                scraper.run(target_url, mode='videos')
+            elif opc == '5':
                 continue
             
             print("\n[✔] Tarea completada. El navegador sigue abierto.")

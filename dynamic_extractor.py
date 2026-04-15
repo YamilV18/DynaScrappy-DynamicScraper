@@ -56,3 +56,26 @@ class ResourceExtractor:
         name = re.sub(r'[\\/:*?"<>|]', '-', name)
         # Quitar espacios al inicio/final y puntos extra
         return name.strip().strip('.')
+    
+    @staticmethod
+    def find_videos(html_content, base_url):
+        """Busca fuentes de video en etiquetas <video>, <source> y enlaces directos."""
+        soup = BeautifulSoup(html_content, 'html.parser')
+        videos = []
+        
+        # 1. Buscar en etiquetas de video de HTML5
+        for video_tag in soup.find_all(['video', 'source']):
+            src = video_tag.get('src') or video_tag.get('data-src')
+            if src:
+                videos.append(urljoin(base_url, src))
+        
+        # 2. Buscar enlaces <a> que apunten a extensiones de video comunes
+        video_extensions = ['mp4', 'webm', 'ogg', 'mov', 'avi']
+        pattern = re.compile(rf".*\.({ '|'.join(video_extensions) })(\?.*)?$", re.IGNORECASE)
+        
+        for a in soup.find_all('a', href=True):
+            href = a['href']
+            if pattern.match(href):
+                videos.append(urljoin(base_url, href))
+                
+        return list(set(videos))

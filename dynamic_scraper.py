@@ -73,6 +73,7 @@ class DynamicScraper:
                 input(">>> Realiza los ajustes necesarios y presiona ENTER para extraer...")
                 
                 content = page.content()
+                resources = []
                 
                 if mode == 'files':
                     resources = self.extractor.find_links(content, url, extensions)
@@ -80,13 +81,18 @@ class DynamicScraper:
                 elif mode == 'images':
                     resources = self.extractor.find_images(content, url)
                     self._download_manager(resources, url)
+                elif mode == 'videos':
+                    resources = self.extractor.find_videos(content, url)
+                    self._download_manager(resources, url)
                 elif mode == 'text':
                     text = self.extractor.find_text_blocks(content)
                     self._save_text(text, url)
 
                 if resources:
+                    print(f"[*] Se encontraron {len(resources)} recursos. Iniciando descarga...")
                     self._download_manager(resources, url)
-
+                else:
+                    if mode != 'text': print("[!] No se encontró contenido relevante para descargar.")
                 page.close() # Solo cerramos la pestaña, no el navegador
                 
             except Exception as e:
