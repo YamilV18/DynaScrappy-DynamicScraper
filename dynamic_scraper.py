@@ -103,6 +103,11 @@ class DynamicScraper:
                 elif mode == 'videos':
                     # 1. Obtener la URL REAL que tiene el navegador en este segundo
                     # (Importante para YouTube Shorts y TikTok donde la URL cambia al hacer scroll)
+                    
+                    # Verificar si el usuario canceló antes de invocar yt-dlp
+                    if self.cancel_callback and self.cancel_callback():
+                        return
+                    
                     current_url = page.url
 
                     if "tiktok.com/explore" in current_url or "youtube.com/shorts" in current_url:

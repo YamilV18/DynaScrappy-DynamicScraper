@@ -402,12 +402,7 @@ class DynaScrappyApp(ctk.CTk):
         self._log("[!] Cancelación solicitada...", "warn")
         self.cancel_requested = True
         
-        # Intentar cerrar el navegador para detener el scraper
-        try:
-            self.scraper._force_close_browser()
-            self._log("[✔] Navegador cerrado, cancelación en progreso...", "warn")
-        except Exception as e:
-            pass
+        self._log("[✔] Deteniendo descargas activas...", "info")
         
         # Volver a mostrar botón de ejecutar
         self.cancel_btn.grid_remove()
