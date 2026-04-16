@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 import yt_dlp
 
 class DynamicScraper:
-    def __init__(self, base_dir='universal_downloads', port=9222):
+    def __init__(self, base_dir='universal_downloads', port=9222, cancel_callback=None):
         self.base_dir = base_dir
         self.port = port
         self.extractor = ResourceExtractor()
@@ -22,6 +22,7 @@ class DynamicScraper:
         self.playwright = None
         self.browser_context = None
         self.session = requests.Session()
+        self.cancel_callback = cancel_callback  # Función que retorna True si se solicitó cancelación
         # Lista de User-Agents para rotar
         self.user_agents = [
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36...',
@@ -89,7 +90,6 @@ class DynamicScraper:
                     time.sleep(2)
 
                 print(f"\n[!] Navegador abierto en: {page_title}")
-                input(">>> Realiza los ajustes necesarios y presiona ENTER para extraer...")
                 
                 content = page.content()
                 resources = []
@@ -108,7 +108,7 @@ class DynamicScraper:
                     if "tiktok.com/explore" in current_url or "youtube.com/shorts" in current_url:
                         # Intentamos obtener la URL del video que tiene el foco/reproducción
                         # En TikTok, el video activo suele actualizar la URL si haces clic en él
-                        print(f"[*] Estás en una sección de exploración. Asegúrate de hacer clic en el video antes de presionar ENTER.")
+                        print(f"[*] Estás en una sección de exploración. Procesando el video activo...")
                         
                     self._universal_video_download(current_url) 
                     
@@ -174,6 +174,11 @@ class DynamicScraper:
         # Limitamos a un máximo de 5 hilos para no saturar al servidor
         with ThreadPoolExecutor(max_workers=5) as executor:
             for link in links:
+                # Verificar cancelación antes de enviar cada descarga
+                if self.cancel_callback and self.cancel_callback():
+                    print("[!] Descarga cancelada por el usuario.")
+                    executor.shutdown(wait=False)
+                    return
                 full_url = urljoin(base_url, link)
                 executor.submit(self._download_item, full_url)
 
@@ -182,6 +187,10 @@ class DynamicScraper:
         pbar.update(1)
 
     def _download_item(self, url):
+        # Verificar cancelación antes de descargar
+        if self.cancel_callback and self.cancel_callback():
+            return
+        
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': random.choice(self.user_agents)})
         """Descarga robusta con reintentos para conexiones móviles."""
@@ -196,6 +205,12 @@ class DynamicScraper:
             time.sleep(random.uniform(1, 3))
 
             for intento in range(intentos_max):
+                # Verificar cancelación en cada intento
+                if self.cancel_callback and self.cancel_callback():
+                    if os.path.exists(filename):
+                        os.remove(filename)
+                    return
+                
                 try:
                     headers = {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -210,6 +225,12 @@ class DynamicScraper:
                         with open(filename, 'wb') as f:
                             downloaded_size = 0
                             for chunk in response.iter_content(chunk_size=8192):
+                                # Verificar cancelación durante la descarga por chunks
+                                if self.cancel_callback and self.cancel_callback():
+                                    if os.path.exists(filename):
+                                        os.remove(filename)
+                                    return
+                                
                                 if chunk:
                                     f.write(chunk)
                                     downloaded_size += len(chunk)
