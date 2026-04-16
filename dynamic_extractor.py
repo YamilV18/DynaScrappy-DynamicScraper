@@ -8,19 +8,18 @@ class ResourceExtractor:
     
     @staticmethod
     def find_links(html_content, base_url, extensions=None):
-        """Busca enlaces a archivos basados en extensiones (pdf, csv, zip, etc)."""
         soup = BeautifulSoup(html_content, 'html.parser')
-        links = []
-        # Extensiones por defecto si no se proveen
+        links = set() # Usar set evita duplicados desde el inicio
         ext_pattern = extensions if extensions else ['pdf', 'csv', 'zip', 'xlsx', 'docx']
+        
+        # Regex mejorada para ignorar parámetros de consulta complejos
         regex = re.compile(rf".*\.({ '|'.join(ext_pattern) })(\?.*)?$", re.IGNORECASE)
 
         for a in soup.find_all('a', href=True):
-            href = a['href']
+            href = urljoin(base_url, a['href']) # Convertir a absoluta de una vez
             if regex.match(href):
-                # Limpieza de URL y normalización (opcional)
-                links.append(href)
-        return list(set(links))
+                links.add(href)
+        return list(links)
 
     @staticmethod
     def find_images(html_content, base_url):
