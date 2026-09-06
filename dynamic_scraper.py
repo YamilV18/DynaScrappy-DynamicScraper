@@ -114,9 +114,7 @@ class DynamicScraper:
                         # Intentamos obtener la URL del video que tiene el foco/reproducción
                         # En TikTok, el video activo suele actualizar la URL si haces clic en él
                         print(f"[*] Estás en una sección de exploración. Procesando el video activo...")
-                        
-                    self._universal_video_download(current_url) 
-                    
+                                            
                     # 2. Buscar videos estáticos en el DOM
                     video_links = self.extractor.find_videos(content, current_url)
                     
@@ -389,19 +387,31 @@ class DynamicScraper:
         page.on("response", handle_response)
 
     def _universal_video_download(self, url):
-        """Usa yt-dlp para manejar sitios complejos como YouTube."""
+        """Descarga videos mediante yt-dlp."""
+
         ydl_opts = {
-            'format': 'best', 
-            'outtmpl': os.path.join(self.current_session_path, '%(title)s.%(ext)s'),
+            'format': 'bv*+ba/b',
+            'outtmpl': os.path.join(
+                self.current_session_path,
+                '%(title)s.%(ext)s'
+            ),
             'noplaylist': True,
+
+            # Permite que yt-dlp use el runtime JS disponible.
+            'js_runtimes': {
+                'deno': {}
+            },
+
+            # Mantener mensajes útiles en la interfaz.
+            'quiet': False,
+            'no_warnings': False,
         }
+
         try:
+            print(f"[*] Iniciando yt-dlp para: {url}")
+
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                try:
-                    ydl.download([url])
-                except Exception as e:
-                    print(f"[!] Error en motor universal: {e}")
+                ydl.download([url])
+
         except Exception as e:
-            # Si falla (porque no es un sitio soportado), intentamos tu método segmentado
-            print(f"[!] Motor universal falló, intentando descarga directa...")
-            self._download_video_segmented(url)
+            print(f"[!] Error en motor universal: {e}")
